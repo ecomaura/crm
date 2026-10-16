@@ -83,10 +83,19 @@ function login(msg=''){
   <input id="pw" type="password" placeholder="Password (6+ chars)" autocomplete="current-password">
   <div class="err">${msg}</div>
   <button class="p" id="si">Sign in</button><button id="su">Create account</button>
+  <div class="mut" style="text-align:center">or</div>
+  <button id="gg">Continue with Google</button>
   ${FIREBASE_CONFIG ? '' : '<button id="rc" class="mut" style="border:0">Change Firebase config</button>'}</div>`;
   const go = fn => () => fn($('#em').value, $('#pw').value).catch(e => login(esc(e.message)));
   $('#si').onclick = go((e,p) => auth.signInWithEmailAndPassword(e,p));
   $('#su').onclick = go((e,p) => auth.createUserWithEmailAndPassword(e,p));
+  $('#gg').onclick = () => {
+    const prov = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(prov).catch(e => {
+      if (['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code)) auth.signInWithRedirect(prov);
+      else if (e.code !== 'auth/popup-closed-by-user') login(esc(e.message));
+    });
+  };
   if ($('#rc')) $('#rc').onclick = () => { localStorage.removeItem('crm_cfg'); location.reload(); };
 }
 
