@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocket CRM</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f27;--mut:#6b7280;--bd:#e3e6eb;--ac:#2f6feb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--tx:#eceff4;--mut:#9aa3b2;--bd:#2b2f38;--ac:#5b8cff}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5}
+h1{font-size:18px;margin:0}main{max-width:900px;margin:0 auto;padding:16px}
+input,select,textarea,button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:9px 11px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.d{color:var(--bad)}
+.box{max-width:380px;margin:60px auto;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px;display:grid;gap:10px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.bar input{flex:1;min-width:140px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;cursor:pointer}.stat b{display:block;font-size:22px}.stat span{color:var(--mut);font-size:12px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:8px;display:grid;gap:4px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:start}.mut{color:var(--mut);font-size:13px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd)}
+.Lead{color:var(--ac)}.Contacted{color:var(--warn)}.Customer{color:var(--ok)}.Lost{color:var(--mut)}
+.over{color:var(--bad);font-weight:600}
+dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);width:min(440px,94vw);padding:16px}
+dialog form{display:grid;gap:8px}dialog::backdrop{background:#0008}.err{color:var(--bad);font-size:13px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<dialog id="dlg"><form id="f" method="dialog">
+<h3 id="ft" style="margin:0">Contact</h3>
+<input name="name" placeholder="Name *" required>
+<input name="company" placeholder="Company">
+<input name="email" type="email" placeholder="Email">
+<input name="phone" type="tel" placeholder="Phone">
+<select name="status"><option>Lead</option><option>Contacted</option><option>Customer</option><option>Lost</option></select>
+<label class="mut">Next follow-up <input name="follow" type="date" style="width:100%"></label>
+<textarea name="notes" rows="3" placeholder="Notes"></textarea>
+<div class="row"><button type="button" onclick="dlg.close()">Cancel</button><button class="p">Save</button></div>
+</form></dialog>
+
+<!-- Firebase compat SDKs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script>
+// Option 1: paste your config here. Option 2: leave null and paste it in the app on first run.
+const FIREBASE_CONFIG = null; // e.g. {apiKey:"...",authDomain:"...",projectId:"...",appId:"..."}
+
+const $ = s => document.querySelector(s), app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let db, auth, col, unsub, contacts = [], filter = 'All', q = '', editId = null;
+
+function cfg(){ try { return FIREBASE_CONFIG || JSON.parse(localStorage.getItem('crm_cfg')); } catch { return null; } }
+
+function setup(msg=''){
+  app.innerHTML = `<div class="box"><h2 style="margin:0">Connect Firebase</h2>
+  <div class="mut">Firebase console → Project settings → Your apps (Web) → paste the config object (JSON or JS).</div>
+  <textarea id="cj" rows="7" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
+  <div class="err">${msg}</div><button class="p" id="sv">Save &amp; continue</button></div>`;
+  $('#sv').onclick = () => {
+    try {
+      let t = $('#cj').value.trim().replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+      const o = (new Function('return ' + t))();
+      if (!o.apiKey || !o.projectId) throw 0;
+      localStorage.setItem('crm_cfg', JSON.stringify(o)); location.reload();
+    } catch { setup('Could not read that config.'); }
+  };
+}
+
+function login(msg=''){
+  app.innerHTML = `<div class="box"><h2 style="margin:0">Pocket CRM</h2>
+  <input id="em" type="email" placeholder="Email" autocomplete="username">
+  <input id="pw" type="password" placeholder="Password (6+ chars)" autocomplete="current-password">
+  <div class="err">${msg}</div>
+  <button class="p" id="si">Sign in</button><button id="su">Create account</button>
+  ${FIREBASE_CONFIG ? '' : '<button id="rc" class="mut" style="border:0">Change Firebase config</button>'}</div>`;
+  const go = fn => () => fn($('#em').value, $('#pw').value).catch(e => login(esc(e.message)));
+  $('#si').onclick = go((e,p) => auth.signInWithEmailAndPassword(e,p));
+  $('#su').onclick = go((e,p) => auth.createUserWithEmailAndPassword(e,p));
+  if ($('#rc')) $('#rc').onclick = () => { localStorage.removeItem('crm_cfg'); location.reload(); };
+}
+
+function shell(){
+  app.innerHTML = `<header><h1>Pocket CRM</h1><div><button class="p" id="add">+ Contact</button> <button id="out">Sign out</button></div></header>
+  <main><div class="stats" id="st"></div>
+  <div class="bar"><input id="s" type="search" placeholder="Search name, company, email, notes…" value="${esc(q)}"></div>
+  <div id="list"></div></main>`;
+  $('#add').onclick = () => openDlg();
+  $('#out').onclick = () => auth.signOut();
+  $('#s').oninput = e => { q = e.target.value.toLowerCase(); render(); };
+}
+
+function render(){
+  const today = new Date().toISOString().slice(0,10);
+  const stages = ['Lead','Contacted','Customer','Lost'];
+  $('#st').innerHTML = [['All', contacts.length], ...stages.map(s => [s, contacts.filter(c => c.status===s).length])]
+    .map(([s,n]) => `<div class="stat" data-f="${s}" style="${filter===s?'border-color:var(--ac)':''}"><b>${n}</b><span>${s}</span></div>`).join('');
+  document.querySelectorAll('.stat').forEach(el => el.onclick = () => { filter = el.dataset.f; render(); });
+  const list = contacts.filter(c => (filter==='All' || c.status===filter) &&
+    [c.name,c.company,c.email,c.phone,c.notes].join(' ').toLowerCase().includes(q));
+  $('#list').innerHTML = list.length ? list.map(c => `<div class="c">
+    <div class="row"><div><b>${esc(c.name)}</b> <span class="mut">${esc(c.company)}</span></div><span class="tag ${c.status}">${c.status}</span></div>
+    <div class="mut">${c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:''} ${c.phone?` · <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>`:''}</div>
+    ${c.follow?`<div class="mut ${c.follow<today&&c.status!=='Customer'&&c.status!=='Lost'?'over':''}">Follow up: ${esc(c.follow)}</div>`:''}
+    ${c.notes?`<div>${esc(c.notes)}</div>`:''}
+    <div class="row" style="justify-content:flex-end"><button data-e="${c.id}">Edit</button><button class="d" data-d="${c.id}">Delete</button></div></div>`).join('')
+    : '<p class="mut">No contacts yet.</p>';
+  document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => openDlg(b.dataset.e));
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => confirm('Delete this contact?') && col.doc(b.dataset.d).delete());
+}
+
+function openDlg(id){
+  editId = id || null;
+  const c = contacts.find(x => x.id === id) || {status:'Lead'};
+  $('#ft').textContent = id ? 'Edit contact' : 'New contact';
+  for (const k of ['name','company','email','phone','status','follow','notes']) $('#f').elements[k].value = c[k] || '';
+  dlg.showModal();
+}
+
+$('#f').onsubmit = () => {
+  const d = Object.fromEntries(new FormData($('#f')));
+  d.updated = firebase.firestore.FieldValue.serverTimestamp();
+  if (editId) col.doc(editId).update(d); else { d.created = d.updated; col.add(d); }
+};
+
+function init(){
+  const c = cfg();
+  if (!c) return setup();
+  firebase.initializeApp(c);
+  auth = firebase.auth(); db = firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); // offline cache
+  auth.onAuthStateChanged(u => {
+    if (unsub) unsub();
+    if (!u) return login();
+    col = db.collection('users').doc(u.uid).collection('contacts');
+    shell();
+    unsub = col.orderBy('name').onSnapshot(s => {
+      contacts = s.docs.map(d => ({id:d.id, ...d.data()})); render();
+    }, e => $('#list').innerHTML = `<p class="err">${esc(e.message)}</p>`);
+  });
+}
+init();
+</script>
+</body>
+</html>
