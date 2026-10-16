@@ -108,14 +108,9 @@ function render(){
 
 function renderList(){
   const t = today(), B = ['Lead','Contacted','Converted','Lost'];
-  const tiles = ['All', ...B].map(s => {
-    const l = contacts.filter(c => s === 'All' || c.status === s);
-    return `<div class="stat" data-f="${s}" style="cursor:pointer;${filter===s?'border-color:var(--ac)':''}"><b>${l.length}</b><span>${s==='All'?'All contacts':s}</span><i>${money(l.reduce((a,c)=>a+val(c),0))}</i></div>`;
-  }).join('');
   const list = contacts.filter(c => (filter==='All' || c.status===filter) &&
     [c.name,c.company,c.email,c.phone,c.notes,c.service].join(' ').toLowerCase().includes(q));
-  $('#main').innerHTML = `<div class="grid">${tiles}</div>
-  <div class="bar"><input id="s" type="search" placeholder="Search…" value="${esc(q)}">
+  $('#main').innerHTML = `<div class="bar"><input id="s" type="search" placeholder="Search…" value="${esc(q)}">
   <select id="sf">${['All',...B].map(s => `<option value="${s}" ${filter===s?'selected':''}>${s==='All'?'All stages':s}</option>`).join('')}</select></div>
   <div id="list">${list.length ? list.map(c => {
     const conv = c.status === 'Converted', dv = val(c), pd = paid(c);
@@ -130,7 +125,6 @@ function renderList(){
   }).join('') : '<p class="mut">No contacts yet.</p>'}</div>`;
   $('#s').oninput = e => { q = e.target.value.toLowerCase(); renderList(); $('#s').focus(); $('#s').setSelectionRange(q.length,q.length); };
   $('#sf').onchange = e => { filter = e.target.value; renderList(); };
-  document.querySelectorAll('[data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderList(); });
   document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => openDlg(b.dataset.e));
   document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => openDeal(b.dataset.p));
   document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => confirm('Delete this contact?') && col.doc(b.dataset.d).delete());
