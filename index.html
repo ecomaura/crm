@@ -46,7 +46,15 @@ dialog form{display:grid;gap:8px}dialog::backdrop{background:#0008}.err{color:va
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
 <script>
 // Option 1: paste your config here. Option 2: leave null and paste it in the app on first run.
-const FIREBASE_CONFIG = null; // e.g. {apiKey:"...",authDomain:"...",projectId:"...",appId:"..."}
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB5paiSOzS1djoUEbym7_vh-rTb2rYYPCA",
+  authDomain: "bucket-tracker-1d6cc.firebaseapp.com",
+  databaseURL: "https://bucket-tracker-1d6cc-default-rtdb.firebaseio.com",
+  projectId: "bucket-tracker-1d6cc",
+  storageBucket: "bucket-tracker-1d6cc.firebasestorage.app",
+  messagingSenderId: "699538557626",
+  appId: "1:699538557626:web:dde30b287a930837e79083"
+};
 
 const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
