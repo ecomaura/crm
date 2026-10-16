@@ -115,7 +115,8 @@ function renderList(){
   const list = contacts.filter(c => (filter==='All' || c.status===filter) &&
     [c.name,c.company,c.email,c.phone,c.notes,c.service].join(' ').toLowerCase().includes(q));
   $('#main').innerHTML = `<div class="grid">${tiles}</div>
-  <div class="bar"><input id="s" type="search" placeholder="Search…" value="${esc(q)}"></div>
+  <div class="bar"><input id="s" type="search" placeholder="Search…" value="${esc(q)}">
+  <select id="sf">${['All',...B].map(s => `<option value="${s}" ${filter===s?'selected':''}>${s==='All'?'All stages':s}</option>`).join('')}</select></div>
   <div id="list">${list.length ? list.map(c => {
     const conv = c.status === 'Converted', dv = val(c), pd = paid(c);
     return `<div class="c">
@@ -128,6 +129,7 @@ function renderList(){
     <div class="row" style="justify-content:flex-end">${conv?`<button class="p" data-p="${c.id}">Deal &amp; payments</button>`:''}<button data-e="${c.id}">Edit</button><button class="d" data-d="${c.id}">Delete</button></div></div>`;
   }).join('') : '<p class="mut">No contacts yet.</p>'}</div>`;
   $('#s').oninput = e => { q = e.target.value.toLowerCase(); renderList(); $('#s').focus(); $('#s').setSelectionRange(q.length,q.length); };
+  $('#sf').onchange = e => { filter = e.target.value; renderList(); };
   document.querySelectorAll('[data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderList(); });
   document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => openDlg(b.dataset.e));
   document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => openDeal(b.dataset.p));
