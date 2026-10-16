@@ -8,21 +8,23 @@
 :root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f27;--mut:#6b7280;--bd:#e3e6eb;--ac:#2f6feb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626}
 @media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--tx:#eceff4;--mut:#9aa3b2;--bd:#2b2f38;--ac:#5b8cff}}
 *{box-sizing:border-box}body{margin:0;font:15px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
-header{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5}
-h1{font-size:18px;margin:0}main{max-width:900px;margin:0 auto;padding:16px}
+header{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5}
+h1{font-size:18px;margin:0}main{max-width:960px;margin:0 auto;padding:16px}
 input,select,textarea,button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:9px 11px}
-button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.d{color:var(--bad)}
+button{cursor:pointer}button.p,button.on{background:var(--ac);color:#fff;border-color:var(--ac)}button.d{color:var(--bad)}
 .box{max-width:380px;margin:60px auto;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px;display:grid;gap:10px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.bar input{flex:1;min-width:140px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px}
-.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;cursor:pointer}.stat b{display:block;font-size:22px}.stat span{color:var(--mut);font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px}.stat b{display:block;font-size:20px}.stat span{color:var(--mut);font-size:12px}.stat i{display:block;font-style:normal;font-size:13px;color:var(--mut)}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:8px;display:grid;gap:4px}
-.row{display:flex;justify-content:space-between;gap:8px;align-items:start}.mut{color:var(--mut);font-size:13px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:start;flex-wrap:wrap}.mut{color:var(--mut);font-size:13px}
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd)}
-.Lead{color:var(--ac)}.Contacted{color:var(--warn)}.Customer{color:var(--ok)}.Lost{color:var(--mut)}
-.over{color:var(--bad);font-weight:600}
-dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);width:min(440px,94vw);padding:16px}
-dialog form{display:grid;gap:8px}dialog::backdrop{background:#0008}.err{color:var(--bad);font-size:13px}
+.Lead{color:var(--ac)}.Contacted{color:var(--warn)}.Converted{color:var(--ok)}.Lost{color:var(--mut)}
+.over{color:var(--bad);font-weight:600}.ok{color:var(--ok)}
+dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);width:min(460px,94vw);padding:16px}
+dialog form,.dg{display:grid;gap:8px}dialog::backdrop{background:#0008}.err{color:var(--bad);font-size:13px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd)}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-size:12px}
 </style>
 </head>
 <body>
@@ -34,18 +36,20 @@ dialog form{display:grid;gap:8px}dialog::backdrop{background:#0008}.err{color:va
 <input name="company" placeholder="Company">
 <input name="email" type="email" placeholder="Email">
 <input name="phone" type="tel" placeholder="Phone">
-<select name="status"><option>Lead</option><option>Contacted</option><option>Customer</option><option>Lost</option></select>
+<select name="service"><option>E-commerce</option><option>Basic Website</option></select>
+<input name="pitched" type="number" min="0" step="any" placeholder="Value pitched (₹)">
+<select name="status"><option>Lead</option><option>Contacted</option><option>Converted</option><option>Lost</option></select>
 <label class="mut">Next follow-up <input name="follow" type="date" style="width:100%"></label>
 <textarea name="notes" rows="3" placeholder="Notes"></textarea>
 <div class="row"><button type="button" onclick="dlg.close()">Cancel</button><button class="p">Save</button></div>
 </form></dialog>
 
-<!-- Firebase compat SDKs -->
+<dialog id="dlg2"><div class="dg" id="deal"></div></dialog>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
 <script>
-// Option 1: paste your config here. Option 2: leave null and paste it in the app on first run.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyB5paiSOzS1djoUEbym7_vh-rTb2rYYPCA",
   authDomain: "bucket-tracker-1d6cc.firebaseapp.com",
@@ -58,24 +62,15 @@ const FIREBASE_CONFIG = {
 
 const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let db, auth, col, unsub, contacts = [], filter = 'All', q = '', editId = null;
+const money = n => '₹' + Math.round(+n || 0).toLocaleString('en-IN');
+const iso = d => new Date(d - d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const today = () => iso(new Date());
+const wk = s => { const d = new Date(s+'T00:00:00'); d.setDate(d.getDate() - (d.getDay()+6)%7); return iso(d); };
+const val = c => c.status === 'Converted' ? +(c.dealValue ?? c.pitched) || 0 : +c.pitched || 0;
+const paid = c => (c.payments || []).reduce((a,p) => a + (+p.amt || 0), 0);
+let db, auth, col, unsub, contacts = [], filter = 'All', q = '', editId = null, dealId = null, view = 'list', period = 'day';
 
 function cfg(){ try { return FIREBASE_CONFIG || JSON.parse(localStorage.getItem('crm_cfg')); } catch { return null; } }
-
-function setup(msg=''){
-  app.innerHTML = `<div class="box"><h2 style="margin:0">Connect Firebase</h2>
-  <div class="mut">Firebase console → Project settings → Your apps (Web) → paste the config object (JSON or JS).</div>
-  <textarea id="cj" rows="7" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
-  <div class="err">${msg}</div><button class="p" id="sv">Save &amp; continue</button></div>`;
-  $('#sv').onclick = () => {
-    try {
-      let t = $('#cj').value.trim().replace(/^[^{]*/, '').replace(/[^}]*$/, '');
-      const o = (new Function('return ' + t))();
-      if (!o.apiKey || !o.projectId) throw 0;
-      localStorage.setItem('crm_cfg', JSON.stringify(o)); location.reload();
-    } catch { setup('Could not read that config.'); }
-  };
-}
 
 function login(msg=''){
   app.innerHTML = `<div class="box"><h2 style="margin:0">Pocket CRM</h2>
@@ -83,9 +78,7 @@ function login(msg=''){
   <input id="pw" type="password" placeholder="Password (6+ chars)" autocomplete="current-password">
   <div class="err">${msg}</div>
   <button class="p" id="si">Sign in</button><button id="su">Create account</button>
-  <div class="mut" style="text-align:center">or</div>
-  <button id="gg">Continue with Google</button>
-  ${FIREBASE_CONFIG ? '' : '<button id="rc" class="mut" style="border:0">Change Firebase config</button>'}</div>`;
+  <div class="mut" style="text-align:center">or</div><button id="gg">Continue with Google</button></div>`;
   const go = fn => () => fn($('#em').value, $('#pw').value).catch(e => login(esc(e.message)));
   $('#si').onclick = go((e,p) => auth.signInWithEmailAndPassword(e,p));
   $('#su').onclick = go((e,p) => auth.createUserWithEmailAndPassword(e,p));
@@ -96,66 +89,131 @@ function login(msg=''){
       else if (e.code !== 'auth/popup-closed-by-user') login(esc(e.message));
     });
   };
-  if ($('#rc')) $('#rc').onclick = () => { localStorage.removeItem('crm_cfg'); location.reload(); };
 }
 
 function shell(){
-  app.innerHTML = `<header><h1>Pocket CRM</h1><div><button class="p" id="add">+ Contact</button> <button id="out">Sign out</button></div></header>
-  <main><div class="stats" id="st"></div>
-  <div class="bar"><input id="s" type="search" placeholder="Search name, company, email, notes…" value="${esc(q)}"></div>
-  <div id="list"></div></main>`;
+  app.innerHTML = `<header><h1>Pocket CRM</h1>
+  <div class="row" style="gap:6px"><button id="t1">Contacts</button><button id="t2">Reports</button></div>
+  <div><button class="p" id="add">+ Contact</button> <button id="out">Sign out</button></div></header><main id="main"></main>`;
+  $('#t1').onclick = () => { view = 'list'; render(); };
+  $('#t2').onclick = () => { view = 'report'; render(); };
   $('#add').onclick = () => openDlg();
   $('#out').onclick = () => auth.signOut();
-  $('#s').oninput = e => { q = e.target.value.toLowerCase(); render(); };
 }
 
 function render(){
-  const today = new Date().toISOString().slice(0,10);
-  const stages = ['Lead','Contacted','Customer','Lost'];
-  $('#st').innerHTML = [['All', contacts.length], ...stages.map(s => [s, contacts.filter(c => c.status===s).length])]
-    .map(([s,n]) => `<div class="stat" data-f="${s}" style="${filter===s?'border-color:var(--ac)':''}"><b>${n}</b><span>${s}</span></div>`).join('');
-  document.querySelectorAll('.stat').forEach(el => el.onclick = () => { filter = el.dataset.f; render(); });
+  $('#t1').className = view === 'list' ? 'on' : ''; $('#t2').className = view === 'report' ? 'on' : '';
+  view === 'list' ? renderList() : renderReport();
+}
+
+function renderList(){
+  const t = today(), B = ['Lead','Contacted','Converted','Lost'];
+  const tiles = ['All', ...B].map(s => {
+    const l = contacts.filter(c => s === 'All' || c.status === s);
+    return `<div class="stat" data-f="${s}" style="cursor:pointer;${filter===s?'border-color:var(--ac)':''}"><b>${l.length}</b><span>${s==='All'?'All contacts':s}</span><i>${money(l.reduce((a,c)=>a+val(c),0))}</i></div>`;
+  }).join('');
   const list = contacts.filter(c => (filter==='All' || c.status===filter) &&
-    [c.name,c.company,c.email,c.phone,c.notes].join(' ').toLowerCase().includes(q));
-  $('#list').innerHTML = list.length ? list.map(c => `<div class="c">
-    <div class="row"><div><b>${esc(c.name)}</b> <span class="mut">${esc(c.company)}</span></div><span class="tag ${c.status}">${c.status}</span></div>
+    [c.name,c.company,c.email,c.phone,c.notes,c.service].join(' ').toLowerCase().includes(q));
+  $('#main').innerHTML = `<div class="grid">${tiles}</div>
+  <div class="bar"><input id="s" type="search" placeholder="Search…" value="${esc(q)}"></div>
+  <div id="list">${list.length ? list.map(c => {
+    const conv = c.status === 'Converted', dv = val(c), pd = paid(c);
+    return `<div class="c">
+    <div class="row"><div><b>${esc(c.name)}</b> <span class="mut">${esc(c.company)}</span></div><div><span class="tag">${esc(c.service||'')}</span> <span class="tag ${c.status}">${c.status}</span></div></div>
     <div class="mut">${c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:''} ${c.phone?` · <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>`:''}</div>
-    ${c.follow?`<div class="mut ${c.follow<today&&c.status!=='Customer'&&c.status!=='Lost'?'over':''}">Follow up: ${esc(c.follow)}</div>`:''}
+    <div>Pitched: <b>${money(c.pitched)}</b></div>
+    ${conv?`<div>Closed ${esc(c.closedOn||'')}: <b>${money(dv)}</b> · Paid <span class="ok">${money(pd)}</span> · Balance <span class="${dv-pd>0?'over':'ok'}">${money(dv-pd)}</span></div>`:''}
+    ${c.follow&&!conv?`<div class="mut ${c.follow<t&&c.status!=='Lost'?'over':''}">Follow up: ${esc(c.follow)}</div>`:''}
     ${c.notes?`<div>${esc(c.notes)}</div>`:''}
-    <div class="row" style="justify-content:flex-end"><button data-e="${c.id}">Edit</button><button class="d" data-d="${c.id}">Delete</button></div></div>`).join('')
-    : '<p class="mut">No contacts yet.</p>';
+    <div class="row" style="justify-content:flex-end">${conv?`<button class="p" data-p="${c.id}">Deal &amp; payments</button>`:''}<button data-e="${c.id}">Edit</button><button class="d" data-d="${c.id}">Delete</button></div></div>`;
+  }).join('') : '<p class="mut">No contacts yet.</p>'}</div>`;
+  $('#s').oninput = e => { q = e.target.value.toLowerCase(); renderList(); $('#s').focus(); $('#s').setSelectionRange(q.length,q.length); };
+  document.querySelectorAll('[data-f]').forEach(el => el.onclick = () => { filter = el.dataset.f; renderList(); });
   document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => openDlg(b.dataset.e));
+  document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => openDeal(b.dataset.p));
   document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => confirm('Delete this contact?') && col.doc(b.dataset.d).delete());
+}
+
+function renderReport(){
+  const open = contacts.filter(c => c.status==='Lead' || c.status==='Contacted');
+  const won = contacts.filter(c => c.status==='Converted');
+  const sales = won.reduce((a,c)=>a+val(c),0), coll = won.reduce((a,c)=>a+paid(c),0);
+  const key = d => period==='day' ? d : period==='week' ? wk(d) : d.slice(0,7);
+  const m = {}, row = k => m[k] ??= {n:0,pv:0,cn:0,sv:0,col:0};
+  contacts.forEach(c => {
+    if (c.createdOn) { const r = row(key(c.createdOn)); r.n++; r.pv += +c.pitched||0; }
+    if (c.status==='Converted' && c.closedOn) { const r = row(key(c.closedOn)); r.cn++; r.sv += val(c); }
+    (c.payments||[]).forEach(p => { if (p.date) row(key(p.date)).col += +p.amt||0; });
+  });
+  const ks = Object.keys(m).sort().reverse().slice(0, period==='day' ? 31 : 12);
+  const lab = k => period==='week' ? 'Week of '+k : k;
+  const kp = (b,l,s) => `<div class="stat"><b>${b}</b><span>${l}</span>${s?`<i>${s}</i>`:''}</div>`;
+  $('#main').innerHTML = `<div class="grid">
+  ${kp(money(open.reduce((a,c)=>a+val(c),0)),'Lead pipeline value',open.length+' open leads')}
+  ${kp(money(sales),'Sales value',won.length+' clients closed')}
+  ${kp(money(coll),'Payments received')}
+  ${kp(money(sales-coll),'Outstanding')}</div>
+  <div class="bar">${[['day','Daily'],['week','Weekly'],['month','Monthly']].map(([k,l])=>`<button data-r="${k}" class="${period===k?'on':''}">${l}</button>`).join('')}</div>
+  <div class="tw"><table><tr><th>Period</th><th>New leads</th><th>Pipeline added</th><th>Closed</th><th>Sales value</th><th>Collected</th></tr>
+  ${ks.map(k => { const r = m[k]; return `<tr><td>${lab(k)}</td><td>${r.n}</td><td>${money(r.pv)}</td><td>${r.cn}</td><td>${money(r.sv)}</td><td>${money(r.col)}</td></tr>`; }).join('') || '<tr><td colspan="6" class="mut">No data yet.</td></tr>'}</table></div>`;
+  document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { period = b.dataset.r; renderReport(); });
 }
 
 function openDlg(id){
   editId = id || null;
-  const c = contacts.find(x => x.id === id) || {status:'Lead'};
+  const c = contacts.find(x => x.id === id) || {status:'Lead', service:'E-commerce'};
   $('#ft').textContent = id ? 'Edit contact' : 'New contact';
-  for (const k of ['name','company','email','phone','status','follow','notes']) $('#f').elements[k].value = c[k] || '';
+  for (const k of ['name','company','email','phone','service','pitched','status','follow','notes']) $('#f').elements[k].value = c[k] ?? '';
   dlg.showModal();
 }
 
 $('#f').onsubmit = () => {
   const d = Object.fromEntries(new FormData($('#f')));
-  d.updated = firebase.firestore.FieldValue.serverTimestamp();
-  if (editId) col.doc(editId).update(d); else { d.created = d.updated; col.add(d); }
+  d.pitched = +d.pitched || 0;
+  const old = contacts.find(x => x.id === editId);
+  if (d.status === 'Converted' && !(old && old.closedOn)) { d.closedOn = today(); d.dealValue = d.pitched; }
+  if (editId) col.doc(editId).update(d);
+  else { d.createdOn = today(); d.payments = []; col.add(d); }
 };
 
+function openDeal(id){ dealId = id; renderDeal(); dlg2.showModal(); }
+function renderDeal(){
+  const c = contacts.find(x => x.id === dealId); if (!c) return dlg2.close();
+  const dv = val(c), pd = paid(c);
+  $('#deal').innerHTML = `<h3 style="margin:0">${esc(c.name)} — deal</h3>
+  <label class="mut">Final deal value (₹)<input id="dv" type="number" min="0" step="any" value="${dv}" style="width:100%"></label>
+  <label class="mut">Closure date<input id="cd" type="date" value="${esc(c.closedOn||today())}" style="width:100%"></label>
+  <button onclick="saveDeal()">Save closure</button>
+  <hr style="width:100%;border:0;border-top:1px solid var(--bd)">
+  <div>Paid <b class="ok">${money(pd)}</b> · Balance <b class="${dv-pd>0?'over':'ok'}">${money(dv-pd)}</b></div>
+  ${(c.payments||[]).map(p => `<div class="row"><span>${esc(p.date)} · ${esc(p.method)}</span><span><b>${money(p.amt)}</b> <button class="d" onclick="delPay('${p.id}')">✕</button></span></div>`).join('') || '<div class="mut">No payments yet.</div>'}
+  <div class="row"><input id="pa" type="number" min="0" step="any" placeholder="Amount ₹" style="flex:1;min-width:90px"><input id="pdt" type="date" value="${today()}">
+  <select id="pm"><option>UPI</option><option>Bank</option><option>Cash</option><option>Card</option></select></div>
+  <button class="p" onclick="addPay()">Add payment</button><button onclick="dlg2.close()">Close</button>`;
+}
+function saveDeal(){ col.doc(dealId).update({dealValue:+$('#dv').value||0, closedOn:$('#cd').value||today()}); }
+function addPay(){
+  const amt = +$('#pa').value; if (!amt) return;
+  col.doc(dealId).update({payments: firebase.firestore.FieldValue.arrayUnion({id:Date.now().toString(36), amt, date:$('#pdt').value||today(), method:$('#pm').value})});
+}
+function delPay(pid){
+  const c = contacts.find(x => x.id === dealId);
+  col.doc(dealId).update({payments: (c.payments||[]).filter(p => p.id !== pid)});
+}
+
 function init(){
-  const c = cfg();
-  if (!c) return setup();
-  firebase.initializeApp(c);
+  firebase.initializeApp(cfg());
   auth = firebase.auth(); db = firebase.firestore();
-  db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); // offline cache
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
   auth.onAuthStateChanged(u => {
     if (unsub) unsub();
     if (!u) return login();
     col = db.collection('users').doc(u.uid).collection('contacts');
     shell();
     unsub = col.orderBy('name').onSnapshot(s => {
-      contacts = s.docs.map(d => ({id:d.id, ...d.data()})); render();
-    }, e => $('#list').innerHTML = `<p class="err">${esc(e.message)}</p>`);
+      contacts = s.docs.map(d => ({id:d.id, ...d.data()}));
+      render(); if (dlg2.open) renderDeal();
+    }, e => $('#main').innerHTML = `<p class="err">${esc(e.message)}</p>`);
   });
 }
 init();
